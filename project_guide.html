@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interview Monitoring Backend - Beginner Friendly Deep Guide</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --text: #14213d;
+      --muted: #4b5d79;
+      --line: #dfe7f3;
+      --accent: #1d4ed8;
+      --accent-soft: #dbeafe;
+      --ok: #065f46;
+      --warn: #92400e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    header {
+      background: linear-gradient(135deg, #e8f0ff, #ffffff);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { margin: 0 0 8px; font-size: 1.75rem; }
+    h2 {
+      margin-top: 28px;
+      border-left: 4px solid var(--accent);
+      padding-left: 10px;
+    }
+    h3 { margin-top: 20px; }
+    .muted { color: var(--muted); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 14px 0;
+    }
+    .pill {
+      display: inline-block;
+      font-size: 0.82rem;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 3px 10px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    nav ul { margin: 8px 0; padding-left: 20px; }
+    code {
+      background: #eef3ff;
+      border: 1px solid #d7e3ff;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+    pre.code {
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 10px;
+      padding: 12px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      padding: 10px;
+      font-size: 0.94rem;
+    }
+    th { background: #f1f5ff; }
+    tr:last-child td { border-bottom: none; }
+    details {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      margin: 10px 0;
+      padding: 8px 12px;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .ok { color: var(--ok); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .small { font-size: 0.9rem; }
+    footer {
+      margin-top: 30px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      securityLevel: "loose",
+      flowchart: { curve: "basis" }
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AI Interview Monitoring Backend - Full Beginner Guide</h1>
+      <p class="muted">
+        This document explains the whole backend project in simple language and shows how each file is connected.
+        It includes architecture diagrams, data flow charts, code relationships, and learning resources.
+      </p>
+      <div>
+        <span class="pill">FastAPI</span>
+        <span class="pill">OpenCV</span>
+        <span class="pill">MediaPipe</span>
+        <span class="pill">YOLOv8</span>
+        <span class="pill">WebSocket</span>
+        <span class="pill">Celery + Redis</span>
+      </div>
+    </header>
+
+    <div class="card">
+      <h2 id="toc">Table Of Contents</h2>
+      <nav>
+        <ul>
+          <li><a href="#what-it-does">1) What this project does</a></li>
+          <li><a href="#architecture">2) Architecture diagrams</a></li>
+          <li><a href="#runtime">3) Runtime flow (frame to frontend)</a></li>
+          <li><a href="#api">4) API and data contracts</a></li>
+          <li><a href="#file-guide">5) File-by-file code guide</a></li>
+          <li><a href="#relationships">6) How files relate to each other</a></li>
+          <li><a href="#topics">7) Topic deep dives</a></li>
+          <li><a href="#tests">8) Test coverage</a></li>
+          <li><a href="#resources">9) Learning resources</a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <section id="what-it-does" class="card">
+      <h2>1) What This Project Does</h2>
+      <p>
+        The backend continuously reads camera frames, detects face landmarks, estimates eye direction and head pose,
+        checks for mobile phones, computes a suspicion score, and streams the latest snapshot to frontend.
+      </p>
+      <ul>
+        <li><strong>Input:</strong> webcam frame</li>
+        <li><strong>AI outputs:</strong> <code>eye</code>, <code>head</code>, <code>phone</code>, confidence values</li>
+        <li><strong>Final output:</strong> <code>MonitoringSnapshot</code> from <code>/status</code> and <code>/ws/monitor</code></li>
+      </ul>
+    </section>
+
+    <section id="architecture" class="card">
+      <h2>2) Architecture Diagrams</h2>
+
+      <h3>2.1 Project Folder Map</h3>
+      <pre class="mermaid">
+flowchart TD
+  A[backend/] --> B[app/]
+  A --> C[tests/]
+  A --> D[README.md]
+  A --> E[openapi.yaml]
+  A --> F[requirements.txt]
+  A --> G[.env.example]
+  A --> H[Dockerfile]
+
+  B --> B1[main.py]
+  B --> B2[core/]
+  B --> B3[api/]
+  B --> B4[services/]
+  B --> B5[models/]
+  B --> B6[utils/]
+
+  B2 --> B21[config.py]
+  B2 --> B22[logger.py]
+  B2 --> B23[celery_app.py]
+
+  B3 --> B31[deps.py]
+  B3 --> B32[routes/health.py]
+  B3 --> B33[routes/monitoring.py]
+
+  B4 --> B41[camera_service.py]
+  B4 --> B42[face_landmarks.py]
+  B4 --> B43[eye_tracking.py]
+  B4 --> B44[head_pose.py]
+  B4 --> B45[object_detection.py]
+  B4 --> B46[monitoring_tasks.py]
+  B4 --> B47[monitoring_service.py]
+
+  B5 --> B51[schemas.py]
+  B6 --> B61[helpers.py]
+      </pre>
+
+      <h3>2.2 System Components (Who Talks To Who)</h3>
+      <pre class="mermaid">
+flowchart LR
+  UI[Next.js Frontend] -->|GET /health| API[FastAPI App]
+  UI -->|GET /status| API
+  UI -->|WS /ws/monitor| API
+
+  API --> MS[MonitoringService]
+  MS --> CAM[CameraService]
+  CAM --> FRAME[Video Frame]
+
+  FRAME --> FL[FaceLandmarksExtractor]
+  FL --> EYE[EyeTrackingService]
+  FL --> HEAD[HeadPoseService]
+  FRAME --> PHONE[ObjectDetectionService]
+
+  EYE --> AGG[Snapshot Aggregation]
+  HEAD --> AGG
+  PHONE --> AGG
+  AGG --> MEM[(latest_snapshot)]
+  MEM --> API
+
+  MS -. optional .-> CELERY[Celery Tasks]
+  CELERY -. broker .-> REDIS[(Redis)]
+      </pre>
+    </section>
+
+    <section id="runtime" class="card">
+      <h2>3) Runtime Flow (Frame To Frontend)</h2>
+
+      <h3>3.1 Startup Sequence</h3>
+      <pre class="mermaid">
+sequenceDiagram
+  participant U as Uvicorn
+  participant A as app.main FastAPI
+  participant M as MonitoringService
+  participant F as FaceLandmarksExtractor
+  participant Y as YOLO ObjectDetectionService
+
+  U->>A: import app.main:app
+  A->>A: load Settings + configure logging
+  A->>M: create MonitoringService
+  A->>M: start()
+  M->>F: initialize() (solutions/tasks backend)
+  M->>Y: load_model() (best effort)
+  M->>M: start background worker thread
+      </pre>
+
+      <h3>3.2 Per-Frame Processing Flow</h3>
+      <pre class="mermaid">
+flowchart TD
+  A[Worker loop tick] --> B[Camera read_frame]
+  B -->|fail| E1[Set error camera_read_failed]
+  B -->|ok| C[Extract face landmarks]
+
+  C -->|no landmarks| D1[eye/head = unknown]
+  C -->|landmarks found| D2{CELERY_ENABLED?}
+
+  D2 -->|No| D3[Run eye + head locally]
+  D2 -->|Yes| D4[Queue analyze_landmarks_task]
+  D4 --> D5[Wait result timeout]
+  D5 -->|task fail| D3
+
+  D3 --> P1[Phone detection with frame skipping]
+  D5 -->|task ok| P1
+  D1 --> P1
+
+  P1 --> P2{CELERY phone task?}
+  P2 -->|No| G[Compute suspicion score]
+  P2 -->|Yes| P3[Queue detect_phone_task]
+  P3 --> G
+
+  G --> H[Build MonitoringSnapshot]
+  H --> I[Store latest_snapshot in memory]
+      </pre>
+
+      <h3>3.3 WebSocket Streaming Flow</h3>
+      <pre class="mermaid">
+sequenceDiagram
+  participant F as Frontend
+  participant WS as /ws/monitor route
+  participant M as MonitoringService
+
+  F->>WS: connect websocket
+  WS->>WS: accept + add client in manager
+  loop every WS_INTERVAL_MS
+    WS->>M: get_latest_snapshot()
+    M-->>WS: MonitoringSnapshot
+    WS-->>F: send_json(snapshot)
+  end
+  F->>WS: disconnect
+  WS->>WS: remove client
+      </pre>
+    </section>
+
+    <section id="api" class="card">
+      <h2>4) API And Data Contracts</h2>
+
+      <h3>4.1 Endpoints</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Type</th>
+            <th>Code File</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/health</code></td>
+            <td>REST GET</td>
+            <td><code>app/api/routes/health.py</code></td>
+            <td>Returns service health and latest error state.</td>
+          </tr>
+          <tr>
+            <td><code>/status</code></td>
+            <td>REST GET</td>
+            <td><code>app/api/routes/monitoring.py</code></td>
+            <td>Returns current in-memory monitoring snapshot.</td>
+          </tr>
+          <tr>
+            <td><code>/ws/monitor</code></td>
+            <td>WebSocket</td>
+            <td><code>app/api/routes/monitoring.py</code></td>
+            <td>Streams real-time snapshots every configured interval.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 Schema Diagram</h3>
+      <pre class="mermaid">
+classDiagram
+  class ConfidenceBreakdown {
+    +float eye
+    +float head
+    +float phone
+  }
+
+  class MonitoringSnapshot {
+    +datetime timestamp
+    +EyeDirection eye
+    +HeadDirection head
+    +bool phone
+    +float suspicion_score
+    +float yaw
+    +float pitch
+    +string error
+  }
+
+  class HealthResponse {
+    +status (ok|degraded)
+    +bool monitoring_running
+    +string last_error
+    +datetime timestamp
+  }
+
+  MonitoringSnapshot --> ConfidenceBreakdown
+      </pre>
+
+      <p class="small muted">
+        OpenAPI spec file: <code>openapi.yaml</code>.
+      </p>
+    </section>
+
+    <section id="file-guide" class="card">
+      <h2>5) File-By-File Code Guide</h2>
+      <p>
+        This section covers every important file and explains <strong>what it does</strong>, <strong>who uses it</strong>, and
+        <strong>what to edit when behavior changes</strong>.
+      </p>
+
+      <h3>5.1 Root Files</h3>
+      <table>
+        <thead><tr><th>File</th><th>Why it exists</th><th>Beginner tip</th></tr></thead>
+        <tbody>
+          <tr><td><code>requirements.txt</code></td><td>Python packages needed at runtime (FastAPI, OpenCV, MediaPipe, YOLO, Celery, Redis).</td><td>Install with <code>pip install -r requirements.txt</code>.</td></tr>
+          <tr><td><code>.env.example</code></td><td>Template for environment variables (camera index, thresholds, celery broker URL).</td><td>Copy to <code>.env</code> before running.</td></tr>
+          <tr><td><code>openapi.yaml</code></td><td>Machine-readable API contract for REST and WebSocket docs.</td><td>Great for frontend type-safe client generation.</td></tr>
+          <tr><td><code>README.md</code></td><td>How to run, API usage, frontend integration.</td><td>Start here when onboarding.</td></tr>
+          <tr><td><code>Dockerfile</code></td><td>Container image instructions for deployment.</td><td>Useful for reproducible environments.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.2 <code>app/</code> Entrypoints</h3>
+      <details open>
+        <summary><code>app/main.py</code></summary>
+        <ul>
+          <li>Creates FastAPI app with CORS.</li>
+          <li>Lifecycle startup creates and starts <code>MonitoringService</code>.</li>
+          <li>Lifecycle shutdown stops monitoring thread and camera safely.</li>
+          <li>Registers <code>/health</code>, <code>/status</code>, <code>/ws/monitor</code> routers.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/__main__.py</code></summary>
+        <ul>
+          <li>Allows running app as module (<code>python -m app</code>).</li>
+          <li>Reads host/port from settings and launches uvicorn.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/__init__.py</code></summary>
+        <ul>
+          <li>Package marker for Python imports.</li>
+        </ul>
+      </details>
+
+      <h3>5.3 <code>app/core/</code> (Shared App Infrastructure)</h3>
+      <details open>
+        <summary><code>app/core/config.py</code></summary>
+        <ul>
+          <li>Central settings class loaded from <code>.env</code> using Pydantic Settings.</li>
+          <li>Defines camera, FPS, detection thresholds, model paths, Celery config.</li>
+          <li>Has validators for safe ranges (e.g., websocket interval, celery timeout).</li>
+          <li><code>get_settings()</code> is cached so config is loaded once.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/core/logger.py</code></summary>
+        <ul>
+          <li>Configures JSON logs for easier debugging in production systems.</li>
+          <li>Provides <code>get_logger(name)</code> helper used by all modules.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/core/celery_app.py</code></summary>
+        <ul>
+          <li>Creates Celery app with Redis broker and result backend.</li>
+          <li>Defines queue name and task serialization settings.</li>
+          <li>Imports monitoring tasks module for worker registration.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/core/__init__.py</code></summary>
+        <ul>
+          <li>Package marker.</li>
+        </ul>
+      </details>
+
+      <h3>5.4 <code>app/api/</code> (HTTP + WebSocket Layer)</h3>
+      <details open>
+        <summary><code>app/api/deps.py</code></summary>
+        <ul>
+          <li>Dependency injection helpers to access app-level <code>settings</code> and <code>monitoring_service</code>.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/api/routes/health.py</code></summary>
+        <ul>
+          <li>Implements <code>GET /health</code>.</li>
+          <li>Returns <code>ok</code> or <code>degraded</code> based on worker status and last known error.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/api/routes/monitoring.py</code></summary>
+        <ul>
+          <li>Implements <code>GET /status</code> and <code>WS /ws/monitor</code>.</li>
+          <li>Includes connection manager for multiple websocket clients.</li>
+          <li>Streams snapshots at configured intervals and handles disconnect cleanup.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/api/__init__.py</code> and <code>app/api/routes/__init__.py</code></summary>
+        <ul>
+          <li>Package markers.</li>
+        </ul>
+      </details>
+
+      <h3>5.5 <code>app/services/</code> (Business + AI Logic)</h3>
+      <details open>
+        <summary><code>app/services/camera_service.py</code></summary>
+        <ul>
+          <li>Thread-safe wrapper for OpenCV <code>VideoCapture</code>.</li>
+          <li>Opens camera with platform-specific backend flags.</li>
+          <li>Returns <code>(ok, frame)</code> and raises clear startup errors.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/services/face_landmarks.py</code></summary>
+        <ul>
+          <li>Unified landmark extractor with backend fallback:</li>
+          <li><code>solutions</code> backend (legacy MediaPipe API)</li>
+          <li><code>tasks</code> backend (modern MediaPipe Tasks API)</li>
+          <li>Returns <code>FaceLandmarksResult(landmarks, error)</code> for robust error reporting.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/services/eye_tracking.py</code></summary>
+        <ul>
+          <li>Uses iris and eye-corner landmark ratios.</li>
+          <li>Classifies gaze into <code>center</code>, <code>left</code>, <code>right</code>, <code>down</code>, <code>unknown</code>.</li>
+          <li>Computes confidence score from how far ratio is from neutral.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/services/head_pose.py</code></summary>
+        <ul>
+          <li>Uses selected face points + OpenCV <code>solvePnP</code> to estimate pose angles.</li>
+          <li>Normalizes yaw/pitch angles to stable range.</li>
+          <li>Maps angles to direction labels and confidence.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/services/object_detection.py</code></summary>
+        <ul>
+          <li>Loads YOLO model and runs inference on each sampled frame.</li>
+          <li>Looks specifically for class id <code>67</code> (<code>cell phone</code>).</li>
+          <li>Returns <code>PhoneDetectionResult</code> including errors when inference fails.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/services/monitoring_tasks.py</code></summary>
+        <ul>
+          <li>Celery task definitions:</li>
+          <li><code>monitoring.analyze_landmarks</code> for eye/head detection</li>
+          <li><code>monitoring.detect_phone</code> for phone detection</li>
+          <li>Includes helper to build <code>MonitoringSnapshot</code> from task outputs.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/services/monitoring_service.py</code> (main orchestrator)</summary>
+        <ul>
+          <li>Runs a background worker loop at target FPS.</li>
+          <li>Reads camera frames and calls landmark extraction + detectors.</li>
+          <li>Supports two modes:</li>
+          <li><code>CELERY_ENABLED=false</code> => local in-process detection</li>
+          <li><code>CELERY_ENABLED=true</code> => uses queue tasks with timeout fallback</li>
+          <li>Calculates suspicion score and stores thread-safe latest snapshot.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/services/__init__.py</code></summary>
+        <ul>
+          <li>Package marker.</li>
+        </ul>
+      </details>
+
+      <h3>5.6 <code>app/models/</code> and <code>app/utils/</code></h3>
+      <details open>
+        <summary><code>app/models/schemas.py</code></summary>
+        <ul>
+          <li>Pydantic output schemas for API responses.</li>
+          <li>Defines allowed enum values and numeric ranges.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/utils/helpers.py</code></summary>
+        <ul>
+          <li><code>clamp()</code> to keep values in safe ranges.</li>
+          <li><code>current_timestamp_utc()</code> for consistent timestamps.</li>
+          <li><code>compute_suspicion_score()</code> risk weighting logic.</li>
+        </ul>
+      </details>
+      <details>
+        <summary><code>app/models/__init__.py</code> and <code>app/utils/__init__.py</code></summary>
+        <ul>
+          <li>Package markers.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section id="relationships" class="card">
+      <h2>6) How Files Relate To Each Other</h2>
+
+      <h3>6.1 Module Dependency Graph</h3>
+      <pre class="mermaid">
+flowchart TD
+  M[app/main.py] --> CFG[core/config.py]
+  M --> LOG[core/logger.py]
+  M --> RH[api/routes/health.py]
+  M --> RM[api/routes/monitoring.py]
+  M --> MS[services/monitoring_service.py]
+
+  RH --> DEP[api/deps.py]
+  RH --> SCH[models/schemas.py]
+
+  RM --> DEP
+  RM --> SCH
+  RM --> MS
+
+  DEP --> MS
+  DEP --> CFG
+
+  MS --> CAM[services/camera_service.py]
+  MS --> FL[services/face_landmarks.py]
+  MS --> EYE[services/eye_tracking.py]
+  MS --> HEAD[services/head_pose.py]
+  MS --> OBJ[services/object_detection.py]
+  MS --> TASKS[services/monitoring_tasks.py]
+  MS --> HELP[utils/helpers.py]
+  MS --> SCH
+
+  TASKS --> CEL[core/celery_app.py]
+  TASKS --> EYE
+  TASKS --> HEAD
+  TASKS --> OBJ
+  TASKS --> HELP
+  TASKS --> SCH
+
+  CEL --> CFG
+  FL --> CFG
+  CAM --> LOG
+  OBJ --> LOG
+      </pre>
+
+      <h3>6.2 Responsibility Matrix</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Main files</th>
+            <th>What it owns</th>
+            <th>Does NOT own</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Core</td>
+            <td><code>core/config.py</code>, <code>core/logger.py</code>, <code>core/celery_app.py</code></td>
+            <td>Configuration, logging, queue wiring</td>
+            <td>Camera and AI math</td>
+          </tr>
+          <tr>
+            <td>API</td>
+            <td><code>api/routes/*.py</code>, <code>api/deps.py</code></td>
+            <td>REST/WS transport, connection lifecycle</td>
+            <td>Detection algorithm details</td>
+          </tr>
+          <tr>
+            <td>Services</td>
+            <td><code>services/*.py</code></td>
+            <td>All detection and orchestration logic</td>
+            <td>HTTP route definitions</td>
+          </tr>
+          <tr>
+            <td>Models</td>
+            <td><code>models/schemas.py</code></td>
+            <td>Output shape contracts</td>
+            <td>Business execution logic</td>
+          </tr>
+          <tr>
+            <td>Utils</td>
+            <td><code>utils/helpers.py</code></td>
+            <td>Shared tiny helper functions</td>
+            <td>Large orchestrations</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="topics" class="card">
+      <h2>7) Topic Deep Dives</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Camera Handling</h3>
+          <p class="small">
+            <code>CameraService</code> opens camera lazily and safely with a thread lock. If the camera cannot open,
+            it raises <code>CameraServiceError</code> so monitoring loop can retry and report degraded health.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Face Landmarks</h3>
+          <p class="small">
+            <code>FaceLandmarksExtractor</code> tries <code>solutions</code> first (if allowed), then <code>tasks</code>.
+            This design keeps the system compatible across MediaPipe variations.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Eye Tracking</h3>
+          <p class="small">
+            Uses iris center relative to eye corners to estimate horizontal gaze and iris vertical ratio for down gaze.
+            No deep neural network here; it is geometry-based and lightweight.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Head Pose</h3>
+          <p class="small">
+            Uses <code>solvePnP</code> and fixed 3D face model points to estimate orientation. Then maps yaw/pitch to
+            <code>left/right/up/down/center</code>.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Phone Detection</h3>
+          <p class="small">
+            YOLOv8 inference finds objects and filters for class id <code>67</code> or known phone labels.
+            Frame skipping reduces heavy compute cost.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Suspicion Scoring</h3>
+          <p class="small">
+            Score is weighted blend of eye risk, head risk, and phone risk. Weights are configurable in env settings.
+          </p>
+        </div>
+      </div>
+
+      <h3>7.1 Local Mode vs Celery Mode</h3>
+      <table>
+        <thead><tr><th>Mode</th><th>Setting</th><th>Pros</th><th>Tradeoffs</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Local</td>
+            <td><code>CELERY_ENABLED=false</code></td>
+            <td>Simple to run, fewer moving parts</td>
+            <td>All CPU work in API process</td>
+          </tr>
+          <tr>
+            <td>Queue</td>
+            <td><code>CELERY_ENABLED=true</code></td>
+            <td>Work can scale with separate workers</td>
+            <td>Needs Redis + worker process management</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>7.2 Error Handling Patterns</h3>
+      <ul>
+        <li><strong>Camera unavailable:</strong> loop retries and health degrades with explicit error.</li>
+        <li><strong>No face in frame:</strong> snapshot remains valid but eye/head are <code>unknown</code> with error <code>face_not_detected</code>.</li>
+        <li><strong>YOLO failure:</strong> phone detection returns error field instead of crashing worker loop.</li>
+        <li><strong>Celery task timeout/failure:</strong> local fallback path runs for landmarks.</li>
+      </ul>
+    </section>
+
+    <section id="tests" class="card">
+      <h2>8) Test Coverage</h2>
+      <table>
+        <thead><tr><th>Test file</th><th>What it validates</th></tr></thead>
+        <tbody>
+          <tr><td><code>tests/test_camera_service.py</code></td><td>Camera startup/read/stop and unavailable camera failure path.</td></tr>
+          <tr><td><code>tests/test_eye_tracking.py</code></td><td>Eye direction classification for center/left/down scenarios.</td></tr>
+          <tr><td><code>tests/test_head_pose.py</code></td><td>Head direction thresholds and unknown fallback behavior.</td></tr>
+          <tr><td><code>tests/test_object_detection.py</code></td><td>Phone class parsing from YOLO-like outputs.</td></tr>
+          <tr><td><code>tests/test_monitoring_service.py</code></td><td>Monitoring snapshot aggregation with mocked dependencies.</td></tr>
+        </tbody>
+      </table>
+      <p class="small warn">
+        Note: when architecture changes (for example face-landmark backend refactor), update mocks in tests to match the
+        new implementation interfaces.
+      </p>
+    </section>
+
+    <section id="resources" class="card">
+      <h2>9) Learning Resources</h2>
+
+      <h3>Core Stack</h3>
+      <ul>
+        <li>FastAPI docs: <a href="https://fastapi.tiangolo.com/" target="_blank" rel="noreferrer">https://fastapi.tiangolo.com/</a></li>
+        <li>Pydantic docs: <a href="https://docs.pydantic.dev/" target="_blank" rel="noreferrer">https://docs.pydantic.dev/</a></li>
+        <li>Uvicorn docs: <a href="https://www.uvicorn.org/" target="_blank" rel="noreferrer">https://www.uvicorn.org/</a></li>
+      </ul>
+
+      <h3>Computer Vision</h3>
+      <ul>
+        <li>OpenCV Python tutorials: <a href="https://docs.opencv.org/4.x/d6/d00/tutorial_py_root.html" target="_blank" rel="noreferrer">https://docs.opencv.org/4.x/d6/d00/tutorial_py_root.html</a></li>
+        <li>MediaPipe tasks (face landmarks): <a href="https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker" target="_blank" rel="noreferrer">https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker</a></li>
+        <li>Head pose with solvePnP concept: <a href="https://docs.opencv.org/4.x/d5/d1f/calib3d_solvePnP.html" target="_blank" rel="noreferrer">https://docs.opencv.org/4.x/d5/d1f/calib3d_solvePnP.html</a></li>
+        <li>Ultralytics YOLO docs: <a href="https://docs.ultralytics.com/" target="_blank" rel="noreferrer">https://docs.ultralytics.com/</a></li>
+      </ul>
+
+      <h3>Queue And Realtime</h3>
+      <ul>
+        <li>Celery docs: <a href="https://docs.celeryq.dev/" target="_blank" rel="noreferrer">https://docs.celeryq.dev/</a></li>
+        <li>Redis docs: <a href="https://redis.io/docs/" target="_blank" rel="noreferrer">https://redis.io/docs/</a></li>
+        <li>WebSocket fundamentals (MDN): <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API" target="_blank" rel="noreferrer">https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API</a></li>
+      </ul>
+
+      <h3>Diagrams</h3>
+      <ul>
+        <li>Mermaid syntax: <a href="https://mermaid.js.org/" target="_blank" rel="noreferrer">https://mermaid.js.org/</a></li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Quick Practical Checklist</h2>
+      <ul>
+        <li>Open this file in browser to understand code relationships visually.</li>
+        <li>Start with <code>app/main.py</code>, then read <code>services/monitoring_service.py</code>.</li>
+        <li>If values remain unknown, debug in this order: camera -> face landmarks -> eye/head -> YOLO -> websocket.</li>
+        <li>If queue mode is enabled, confirm both Redis and Celery worker are running.</li>
+      </ul>
+    </section>
+
+    <footer>
+      Document file: <code>backend/project_guide.html</code>
+    </footer>
+  </div>
+</body>
+</html>
