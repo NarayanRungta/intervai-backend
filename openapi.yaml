@@ -1,0 +1,173 @@
+openapi: 3.1.0
+info:
+  title: Interview Monitoring Backend API
+  version: 1.0.0
+  description: |
+    REST and real-time interface for the AI interview monitoring backend.
+
+    Notes:
+    - REST endpoints are fully defined in standard OpenAPI.
+    - WebSocket contracts are described via `x-websocket` vendor extension.
+servers:
+  - url: http://localhost:8001
+    description: Local development server
+tags:
+  - name: Health
+    description: Service health and availability checks
+  - name: Monitoring
+    description: Snapshot and stream interfaces for monitoring results
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: getHealth
+      description: Returns health status of the monitoring worker.
+      responses:
+        "200":
+          description: Health status response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                ok:
+                  value:
+                    status: ok
+                    monitoring_running: true
+                    last_error: null
+                    timestamp: "2026-04-18T15:40:10.259746+00:00"
+                degraded:
+                  value:
+                    status: degraded
+                    monitoring_running: false
+                    last_error: camera_unavailable
+                    timestamp: "2026-04-18T15:40:10.259746+00:00"
+
+  /status:
+    get:
+      tags: [Monitoring]
+      summary: Latest monitoring snapshot
+      operationId: getMonitoringStatus
+      description: Returns the latest aggregated monitoring result.
+      responses:
+        "200":
+          description: Monitoring snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringSnapshot"
+              examples:
+                default:
+                  value:
+                    timestamp: "2026-04-18T15:40:11.173120+00:00"
+                    eye: center
+                    head: left
+                    phone: true
+                    confidence:
+                      eye: 0.87
+                      head: 0.91
+                      phone: 0.95
+                    suspicion_score: 0.71
+                    yaw: -19.4
+                    pitch: 4.2
+                    error: null
+
+  /ws/monitor:
+    get:
+      tags: [Monitoring]
+      summary: WebSocket upgrade endpoint (documentation only)
+      operationId: connectMonitoringWebSocket
+      description: |
+        This route upgrades to a WebSocket connection and streams monitoring snapshots.
+
+        Browser usage:
+        `new WebSocket("ws://localhost:8001/ws/monitor")`
+      responses:
+        "101":
+          description: Switching Protocols (WebSocket connection established)
+        "426":
+          description: Upgrade Required (HTTP request was not upgraded)
+      x-websocket:
+        url: ws://localhost:8001/ws/monitor
+        updateIntervalMs:
+          minimum: 200
+          maximum: 500
+        messageSchema:
+          $ref: "#/components/schemas/MonitoringSnapshot"
+        disconnectCodes:
+          "1000": normal closure
+          "1011": backend internal error
+
+components:
+  schemas:
+    ConfidenceBreakdown:
+      type: object
+      additionalProperties: false
+      required: [eye, head, phone]
+      properties:
+        eye:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        head:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        phone:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+
+    MonitoringSnapshot:
+      type: object
+      additionalProperties: false
+      required: [timestamp, eye, head, phone, confidence, suspicion_score]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        eye:
+          type: string
+          enum: [center, left, right, down, unknown]
+        head:
+          type: string
+          enum: [center, left, right, up, down, unknown]
+        phone:
+          type: boolean
+        confidence:
+          $ref: "#/components/schemas/ConfidenceBreakdown"
+        suspicion_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        yaw:
+          type: [number, "null"]
+          format: float
+          description: Estimated yaw angle in degrees
+        pitch:
+          type: [number, "null"]
+          format: float
+          description: Estimated pitch angle in degrees
+        error:
+          type: [string, "null"]
+
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, monitoring_running, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        monitoring_running:
+          type: boolean
+        last_error:
+          type: [string, "null"]
+        timestamp:
+          type: string
+          format: date-time
