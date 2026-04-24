@@ -102,8 +102,11 @@ class MonitoringService:
             logger.warning("yolo_model_preload_failed", extra={"error": str(exc)})
             self._last_error = f"yolo_model_preload_failed: {exc}"
 
-        self._worker_thread = threading.Thread(target=self._run_loop, name="monitoring-worker", daemon=True)
-        self._worker_thread.start()
+        if self.settings.enable_local_camera:
+            self._worker_thread = threading.Thread(target=self._run_loop, name="monitoring-worker", daemon=True)
+            self._worker_thread.start()
+        else:
+            logger.info("local_camera_disabled_by_config")
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -142,15 +145,15 @@ class MonitoringService:
                 time.sleep(0.2)
                 continue
 
-            snapshot = self._process_frame(frame)
-            self._set_snapshot(snapshot)
+            snapshot = self.process_frame(frame)
+            self.update_snapshot(snapshot)
 
             elapsed = time.perf_counter() - frame_start
             remaining = frame_interval_seconds - elapsed
             if remaining > 0:
                 time.sleep(remaining)
 
-    def _process_frame(self, frame: Any) -> MonitoringSnapshot:
+    def process_frame(self, frame: Any) -> MonitoringSnapshot:
         self._frame_index += 1
         frame_error: str | None = None
 
@@ -342,7 +345,7 @@ class MonitoringService:
                 return top_direction
         return current
 
-    def _set_snapshot(self, snapshot: MonitoringSnapshot) -> None:
+    def update_snapshot(self, snapshot: MonitoringSnapshot) -> None:
         with self._snapshot_lock:
             self._latest_snapshot = snapshot
         self._last_error = snapshot.error

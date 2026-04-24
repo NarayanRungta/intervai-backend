@@ -15,6 +15,8 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY app ./app
 COPY .env.example ./.env.example
+COPY face_landmarker.task ./face_landmarker.task
+COPY yolov8n.pt ./yolov8n.pt
 
 EXPOSE 8000
 

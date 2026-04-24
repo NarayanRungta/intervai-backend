@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from typing import Any
 
@@ -23,6 +24,7 @@ class Settings(BaseSettings):
     ws_interval_ms: int = 300
     camera_warmup_frames: int = 5
     camera_read_retries: int = 1
+    enable_local_camera: bool = Field(default_factory=lambda: os.getenv("RENDER") is None)
 
     eye_horizontal_threshold: float = 0.25
     eye_down_threshold: float = 0.70

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import cv2
+import numpy as np
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
@@ -53,6 +56,29 @@ async def monitor_websocket(websocket: WebSocket) -> None:
 
     try:
         while True:
+            try:
+                # Receive message with timeout to allow sending periodic snapshots
+                message = await asyncio.wait_for(websocket.receive_json(), timeout=0.01)
+                
+                if "frame" in message:
+                    # Decode base64 frame
+                    frame_data = message["frame"]
+                    if "," in frame_data:
+                        frame_data = frame_data.split(",")[1]
+                    
+                    header_bytes = base64.b64decode(frame_data)
+                    nparr = np.frombuffer(header_bytes, np.uint8)
+                    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    
+                    if frame is not None:
+                        snapshot = monitoring_service.process_frame(frame)
+                        monitoring_service.update_snapshot(snapshot)
+            except asyncio.TimeoutError:
+                pass
+            except Exception as exc:
+                logger.warning("frame_processing_failed", extra={"error": str(exc)})
+
+            # Send latest snapshot
             payload = monitoring_service.get_latest_snapshot().model_dump(mode="json")
             await websocket.send_json(payload)
             await asyncio.sleep(settings.ws_interval_seconds)
